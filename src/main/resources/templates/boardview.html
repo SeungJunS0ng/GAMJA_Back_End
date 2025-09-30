@@ -1,60 +1,239 @@
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .stats-badge {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .empty-content {
+            color: #7f8c8d;
+            font-style: italic;
+            text-align: center;
+            padding: 50px;
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>게시글 상세 페이지</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
+    <div class="container">
+        <!-- 헤더 영역 -->
+        <div class="header">
+            <div class="title" th:text="${board.title}">게시물 제목</div>
+        </div>
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        <!-- 메타 정보 -->
+        <div class="meta-info">
+            <div class="meta-left">
+                <div class="meta-item">
+                    <span>👤</span>
+                    <span class="author" th:text="${board.author}">작성자</span>
+                </div>
+                <div class="meta-item">
+                    <span>📅</span>
+                    <span class="date" th:text="${#temporals.format(board.createdAt, 'yyyy년 MM월 dd일 HH:mm')}">작성일</span>
+                </div>
+                <div class="meta-item" th:if="${board.updatedAt != null and board.updatedAt != board.createdAt}">
+                    <span>🔄</span>
+                    <span class="date">
+                        수정: <span th:text="${#temporals.format(board.updatedAt, 'yyyy-MM-dd HH:mm')}">수정일</span>
+                    </span>
+                </div>
+            </div>
+            <div class="meta-right">
+                <div class="meta-item">
+                    <span>👁️</span>
+                    <span class="view-count" th:text="${board.viewCount}">0</span>
+                    <span class="stats-badge">조회</span>
+                </div>
+                <div class="meta-item">
+                    <span>🆔</span>
+                    <span class="stats-badge" th:text="'No.' + ${board.id}">No.1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 첨부파일 영역 -->
+        <div class="file-section" th:if="${board.hasFile()}">
+            <div class="meta-item">
+                <span>📎</span>
+                <strong>첨부파일:</strong>
+                <a th:href="@{/board/download/{id}(id=${board.id})}" class="file-download" th:text="${board.filename}">파일명</a>
+            </div>
+        </div>
+
+        <!-- 게시물 내용 -->
+        <div class="content">
+            <div th:if="${board.content != null and !board.content.isEmpty()}" th:text="${board.content}">
+                게시물 내용이 여기에 표시됩니다.
+            </div>
+            <div th:unless="${board.content != null and !board.content.isEmpty()}" class="empty-content">
+                내용이 없습니다.
+            </div>
+        </div>
+
+        <!-- 버튼 그룹 -->
+        <div class="button-group">
+            <a th:href="@{/board/modify/{id}(id=${board.id})}" class="btn btn-warning">✏️ 수정</a>
+            <a th:href="@{/board/delete(id=${board.id})}" class="btn btn-danger"
+               onclick="return confirm('정말 삭제하시겠습니까?\n삭제된 게시물은 복구할 수 없습니다.')">🗑️ 삭제</a>
+            <a href="/board/list" class="btn btn-secondary">📋 목록</a>
+            <a href="/board/write" class="btn btn-primary">✏️ 새 글쓰기</a>
+        </div>
+
+        <!-- 추가 정보 -->
+        <div style="text-align: center; margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; color: #7f8c8d; font-size: 14px;">
+            <div th:if="${board.hasFile()}">
+                📁 파일 다운로드를 원하시면 위의 파일명을 클릭하세요
+            </div>
+            <div style="margin-top: 10px;">
+                💡 게시물에 문제가 있다면 관리자에게 문의해주세요
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 페이지 로드 시 조회수 증가 알림 (선택사항)
+        document.addEventListener('DOMContentLoaded', function() {
+            // 뒤로가기 버튼 기능
+            if (document.referrer.includes('/board/list')) {
+                // 목록에서 온 경우 뒤로가기 버튼 스타일 변경
+                const listBtn = document.querySelector('a[href="/board/list"]');
+                if (listBtn) {
+                    listBtn.innerHTML = '⬅️ 목록으로 돌아가기';
+                }
+            }
+        });
+
+        // 삭제 확인 강화
+        document.querySelector('.btn-danger').addEventListener('click', function(e) {
+            if (!confirm('정말 삭제하시겠습니까?\n\n⚠️ 주의: 삭제된 게시물은 복구할 수 없습니다!')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+
+        .meta-info {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            height: 100vh;
-        }
-        .container {
-            background-color: #fff;
-            padding: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            max-width: 800px;
-            width: 100%;
-        }
-        h1 {
-            color: #333;
-            border-bottom: 2px solid #007BFF;
-            padding-bottom: 10px;
             margin-bottom: 20px;
         }
-        p {
-            color: #555;
-            line-height: 1.6;
-        }
-        a {
-            display: inline-block;
-            margin: 10px 0;
-            padding: 10px 15px;
-            text-decoration: none;
-            color: #fff;
-            background-color: #007BFF;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        a:hover {
-            background-color: #0056b3;
-        }
-        .links {
+
+        .meta-left, .meta-right {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 20px;
         }
-        .file-info {
-            margin-top: 15px;
-            color: #555;
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .author {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .view-count {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .date {
+            color: #7f8c8d;
+        }
+
+        .content {
+            background-color: #fdfdfd;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+            min-height: 300px;
+            font-size: 16px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .file-section {
+            background-color: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .file-download {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .file-download:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
         }
     </style>
 </head>

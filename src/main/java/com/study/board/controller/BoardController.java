@@ -33,6 +33,14 @@ public class BoardController {
             "static" + File.separator + "files";
 
     /**
+     * 메인 페이지 리다이렉트
+     */
+    @GetMapping("/")
+    public String index() {
+        return "redirect:/board/list";
+    }
+
+    /**
      * 게시물 작성 폼을 보여주는 메서드
      */
     @GetMapping("/board/write")
@@ -50,7 +58,6 @@ public class BoardController {
                                Model model,
                                @RequestParam(value = "file", required = false) MultipartFile file) throws Exception {
 
-        // 유효성 검증 실패 시
         if (bindingResult.hasErrors()) {
             return "boardwrite";
         }
@@ -123,7 +130,6 @@ public class BoardController {
         }
     }
 
-
     /**
      * 게시물을 삭제하는 메서드
      */
@@ -162,7 +168,6 @@ public class BoardController {
                              @RequestParam(value = "file", required = false) MultipartFile file,
                              Model model) throws Exception {
 
-        // 유효성 검증 실패 시
         if (bindingResult.hasErrors()) {
             model.addAttribute("board", boardDTO);
             return "boardmodify";
@@ -196,17 +201,22 @@ public class BoardController {
                 throw new FileNotFoundException("파일을 찾을 수 없습니다: " + file.getAbsolutePath());
             }
 
-            // 파일 크기 검증 (보안)
-            if (file.length() > 50 * 1024 * 1024) { // 50MB 제한
+            if (file.length() > 50 * 1024 * 1024) {
                 throw new IllegalStateException("파일 크기가 너무 큽니다.");
             }
 
             byte[] fileBytes = Files.readAllBytes(file.toPath());
 
+            // 원본 파일명 추출 (UUID 제거)
+            String originalFilename = boardDTO.getFilename();
+            if (originalFilename.contains("_")) {
+                originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
+            }
+
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                           "attachment; filename=\"" + boardDTO.getFilename() + "\"")
+                           "attachment; filename=\"" + originalFilename + "\"")
                     .body(fileBytes);
 
         } catch (Exception e) {
@@ -215,11 +225,49 @@ public class BoardController {
     }
 
     /**
-     * 메인 페이지 리다이렉트
+     * REST API: 게시물 목록 조회
      */
-    @GetMapping("/")
-    public String index() {
-        return "redirect:/board/list";
+    @GetMapping("/api/boards")
+    @ResponseBody
+    public ResponseEntity<Page<BoardDTO>> getBoardList(
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String searchKeyword,
+            @RequestParam(required = false, defaultValue = "all") String searchType) {
+
+        Page<BoardDTO> list;
+        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+            list = boardService.boardList(pageable);
+        } else {
+            list = boardService.boardSearchList(searchKeyword.trim(), searchType, pageable);
+        }
+
+        return ResponseEntity.ok(list);
+    }
+
+    /**
+     * REST API: 게시물 상세 조회
+     */
+    @GetMapping("/api/boards/{id}")
+    @ResponseBody
+    public ResponseEntity<BoardDTO> getBoardDetail(@PathVariable Integer id) {
+        try {
+            BoardDTO boardDTO = boardService.boardView(id);
+            return ResponseEntity.ok(boardDTO);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * REST API: 인기 게시물 조회
+     */
+    @GetMapping("/api/boards/popular")
+    @ResponseBody
+    public ResponseEntity<Page<BoardDTO>> getPopularBoards(
+            @PageableDefault(page = 0, size = 10, sort = "viewCount", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<BoardDTO> list = boardService.getPopularPosts(pageable);
+        return ResponseEntity.ok(list);
     }
 
     /**

@@ -1,190 +1,284 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>게시물 페이지</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게시판 목록</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
             margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
         }
 
-        .layout {
-            width: 80%;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
         }
 
         h1 {
-            color: #333;
-            border-bottom: 2px solid #007BFF;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            color: #2c3e50;
             text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #3498db;
+        }
+
+        .search-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .search-form select, .search-form input, .search-form button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .search-form button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .search-form button:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-group {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
+            background-color: white;
         }
 
         th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
         }
 
         th {
-            background-color: #f0f0f0;
+            background-color: #34495e;
+            color: white;
+            font-weight: bold;
+        }
+
+        td {
+            background-color: #fff;
+        }
+
+        tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        .title-link {
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .title-link:hover {
+            color: #3498db;
+            text-decoration: underline;
         }
 
         .pagination {
-            margin-top: 20px;
             text-align: center;
+            margin-top: 20px;
         }
 
-        .pagination a {
+        .pagination a, .pagination span {
             display: inline-block;
-            width: 32px;
-            height: 32px;
-            line-height: 32px;
+            padding: 10px 15px;
             margin: 0 5px;
             border: 1px solid #ddd;
             border-radius: 5px;
             text-decoration: none;
-            color: #007BFF;
-            background-color: #f9f9f9;
-            text-align: center;
+            color: #333;
         }
 
         .pagination a:hover {
-            background-color: #007BFF;
-            color: #fff;
+            background-color: #3498db;
+            color: white;
         }
 
-        .pagination .active {
-            background-color: #007BFF;
-            color: #fff;
-            border: 1px solid #007BFF;
+        .pagination .current {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .view-count {
+            color: #e74c3c;
             font-weight: bold;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
 
-        button {
-            background-color: #4CAF50;
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            display: inline-block;
+        .author {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .no-data {
             text-align: center;
-            width: 150px;
-            height: 45px;
-            margin: 10px 0;
+            padding: 50px;
+            color: #7f8c8d;
+            font-size: 18px;
         }
 
-        button:hover {
-            background-color: #45a049;
-        }
-
-        form {
-            display: flex;
-            align-items: center;
+        .stats {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
             margin-bottom: 20px;
-        }
-
-        input[type="text"] {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            margin-right: 10px;
-            box-sizing: border-box;
-        }
-
-        .search-button {
-            background-color: #007BFF;
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 150px;
-            height: 45px;
             text-align: center;
-        }
-
-        .search-button:hover {
-            background-color: #0056b3;
-        }
-
-        .message {
-            color: #ff0000;
-            text-align: center;
-            margin: 20px 0;
-            font-weight: bold;
         }
     </style>
 </head>
 <body>
-<div class="layout">
-    <h1>게시물 리스트</h1>
+    <div class="container">
+        <h1>📝 게시판</h1>
 
-    <div th:if="${message}" class="message" th:text="${message}"></div>
+        <!-- 통계 정보 -->
+        <div class="stats" th:if="${list.totalElements > 0}">
+            <strong>전체 게시물: <span th:text="${list.totalElements}">0</span>개</strong>
+            <span th:if="${isPopularPage}"> | 인기 게시물 보기</span>
+        </div>
 
-    <table>
-        <thead>
-        <tr>
-            <th>글번호</th>
-            <th>제목</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="board : ${list}">
-            <td th:text="${board.id}">1</td>
-            <td>
-                <a th:text="${board.title}"
-                   th:href="@{/board/view(id=${board.id})}"
-                   style="color: #007BFF; text-decoration: none;">상세보기</a>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+        <!-- 검색 폼 -->
+        <div class="search-form">
+            <form th:action="@{/board/list}" method="get">
+                <select name="searchType">
+                    <option value="all" th:selected="${searchType == 'all'}">전체</option>
+                    <option value="title" th:selected="${searchType == 'title'}">제목</option>
+                    <option value="content" th:selected="${searchType == 'content'}">내용</option>
+                    <option value="author" th:selected="${searchType == 'author'}">작성자</option>
+                </select>
+                <input type="text" name="searchKeyword" th:value="${searchKeyword}" placeholder="검색어를 입력하세요">
+                <button type="submit">🔍 검색</button>
+                <a href="/board/list" class="btn" style="background-color: #95a5a6; color: white; text-decoration: none;">전체보기</a>
+            </form>
+        </div>
 
-    <div class="pagination">
-        <a th:href="@{/board/list(page=0, searchKeyword=${param.searchKeyword})}"><<</a>
-        <a th:if="${nowPage > 1}"
-           th:href="@{/board/list(page=${nowPage - 2}, searchKeyword=${param.searchKeyword})}">이전</a>
-        <th:block th:each="page : ${#numbers.sequence(startPage, endPage)}">
-            <a th:if="${page != nowPage}"
-               th:href="@{/board/list(page=${page - 1}, searchKeyword=${param.searchKeyword})}"
-               th:text="${page}"></a>
-            <a th:if="${page == nowPage}" class="active" th:text="${page}"></a>
-        </th:block>
-        <a th:if="${nowPage < totalPages}"
-           th:href="@{/board/list(page=${nowPage}, searchKeyword=${param.searchKeyword})}">다음</a>
-        <a th:href="@{/board/list(page=${totalPages - 1}, searchKeyword=${param.searchKeyword})}">>></a>
+        <!-- 버튼 그룹 -->
+        <div class="btn-group">
+            <a href="/board/write" class="btn btn-primary">✏️ 글쓰기</a>
+            <a href="/board/popular" class="btn btn-warning" th:unless="${isPopularPage}">🔥 인기글</a>
+            <a href="/board/list" class="btn btn-success" th:if="${isPopularPage}">📋 전체글</a>
+        </div>
+
+        <!-- 게시물 목록 테이블 -->
+        <table th:if="${list.totalElements > 0}">
+            <thead>
+                <tr>
+                    <th style="width: 10%">번호</th>
+                    <th style="width: 40%">제목</th>
+                    <th style="width: 15%">작성자</th>
+                    <th style="width: 10%">조회수</th>
+                    <th style="width: 15%">작성일</th>
+                    <th style="width: 10%">관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="board : ${list}">
+                    <td th:text="${board.id}">1</td>
+                    <td style="text-align: left;">
+                        <a th:href="@{/board/view(id=${board.id})}" class="title-link" th:text="${board.title}">제목</a>
+                        <span th:if="${board.hasFile()}" style="color: #e67e22;">📎</span>
+                    </td>
+                    <td class="author" th:text="${board.author}">작성자</td>
+                    <td class="view-count" th:text="${board.viewCount}">0</td>
+                    <td th:text="${#temporals.format(board.createdAt, 'yyyy-MM-dd HH:mm')}">2023-01-01</td>
+                    <td>
+                        <a th:href="@{/board/modify/{id}(id=${board.id})}" class="btn" style="background-color: #f39c12; color: white; padding: 5px 10px; font-size: 12px;">수정</a>
+                        <a th:href="@{/board/delete(id=${board.id})}" class="btn" style="background-color: #e74c3c; color: white; padding: 5px 10px; font-size: 12px;"
+                           onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 데이터가 없을 때 -->
+        <div class="no-data" th:if="${list.totalElements == 0}">
+            <p th:if="${searchKeyword != null and !searchKeyword.isEmpty()}">
+                '<span th:text="${searchKeyword}"></span>'에 대한 검색 결과가 없습니다.
+            </p>
+            <p th:unless="${searchKeyword != null and !searchKeyword.isEmpty()}">
+                등록된 게시물이 없습니다. 첫 번째 글을 작성해보세요!
+            </p>
+            <a href="/board/write" class="btn btn-primary">첫 글 작성하기</a>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div class="pagination" th:if="${list.totalPages > 1}">
+            <!-- 이전 페이지 -->
+            <a th:if="${hasPrevious}" th:href="@{/board/list(page=${nowPage-2}, searchKeyword=${searchKeyword}, searchType=${searchType})}">« 이전</a>
+
+            <!-- 페이지 번호 -->
+            <span th:each="page : ${#numbers.sequence(startPage, endPage)}">
+                <a th:if="${page != nowPage}"
+                   th:href="@{/board/list(page=${page-1}, searchKeyword=${searchKeyword}, searchType=${searchType})}"
+                   th:text="${page}">1</a>
+                <span th:if="${page == nowPage}" class="current" th:text="${page}">1</span>
+            </span>
+
+            <!-- 다음 페이지 -->
+            <a th:if="${hasNext}" th:href="@{/board/list(page=${nowPage}, searchKeyword=${searchKeyword}, searchType=${searchType})}">다음 »</a>
+        </div>
+
+        <!-- 페이지 정보 -->
+        <div style="text-align: center; margin-top: 20px; color: #7f8c8d;" th:if="${list.totalElements > 0}">
+            <small>
+                <span th:text="${nowPage}">1</span> / <span th:text="${totalPages}">1</span> 페이지
+                (전체 <span th:text="${list.totalElements}">0</span>개)
+            </small>
+        </div>
     </div>
-
-    <form th:action="@{/board/list}" method="get">
-        <input type="text" name="searchKeyword" placeholder="검색어 입력" th:value="${param.searchKeyword}">
-        <button type="submit" class="search-button">검색</button>
-    </form>
-
-    <button onclick="location.href='/board/write'">게시물 작성</button>
-</div>
 </body>
 </html>

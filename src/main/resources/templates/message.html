@@ -1,27 +1,179 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알림</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .success-icon {
+            color: #27ae60;
+        }
+
+        .error-icon {
+            color: #e74c3c;
+        }
+
+        .info-icon {
+            color: #3498db;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .message {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            line-height: 1.5;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .countdown {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
-
-<script th:inline="javascript">
-
-    /*<![CDATA[*/
-
-    // Thymeleaf 변수를 JavaScript 변수에 할당
-    var message = [[${message}]];
-
-    // 경고창을 띄우는 코드
-    alert(message);
-
-    // 페이지를 새로운 URL로 리다이렉트
-    location.replace([[${searchUrl}]]);
-
-    /*]]>*/
-</script>
-
 <body>
+    <div class="container">
+        <!-- 아이콘 표시 -->
+        <div class="icon">
+            <span th:if="${message != null and (message.contains('성공') or message.contains('완료') or message.contains('등록'))}" class="success-icon">✅</span>
+            <span th:if="${message != null and (message.contains('오류') or message.contains('실패') or message.contains('없습니다'))}" class="error-icon">❌</span>
+            <span th:unless="${message != null and (message.contains('성공') or message.contains('완료') or message.contains('등록') or message.contains('오류') or message.contains('실패') or message.contains('없습니다'))}" class="info-icon">ℹ️</span>
+        </div>
 
+        <!-- 제목 -->
+        <h1>알림</h1>
+
+        <!-- 메시지 내용 -->
+        <div class="message" th:text="${message}">
+            메시지가 표시됩니다.
+        </div>
+
+        <!-- 버튼 그룹 -->
+        <div>
+            <a th:href="${searchUrl}" class="btn btn-primary" id="redirectBtn">
+                <span th:if="${searchUrl == '/board/list'}">📋 목록으로 이동</span>
+                <span th:if="${searchUrl == '/board/write'}">✏️ 작성 페이지로</span>
+                <span th:unless="${searchUrl == '/board/list' or searchUrl == '/board/write'}">🔙 이동</span>
+            </a>
+            <a href="/board/list" class="btn btn-success">🏠 메인으로</a>
+        </div>
+
+        <!-- 자동 리다이렉트 카운트다운 -->
+        <div class="countdown">
+            <span class="loading"></span>
+            <span id="countdown">3</span>초 후 자동으로 이동합니다
+        </div>
+    </div>
+
+    <script>
+        // 3초 후 자동 리다이렉트
+        let countdown = 3;
+        const countdownElement = document.getElementById('countdown');
+        const redirectUrl = /*[[${searchUrl}]]*/ '/board/list';
+
+        const timer = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+
+            if (countdown <= 0) {
+                clearInterval(timer);
+                window.location.href = redirectUrl;
+            }
+        }, 1000);
+
+        // 버튼 클릭 시 타이머 중지
+        document.getElementById('redirectBtn').addEventListener('click', () => {
+            clearInterval(timer);
+        });
+
+        // ESC 키로 이동
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearInterval(timer);
+                window.location.href = redirectUrl;
+            }
+        });
+    </script>
 </body>
 </html>

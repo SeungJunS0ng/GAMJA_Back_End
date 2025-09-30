@@ -1,85 +1,213 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>게시물 작성폼</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게시물 작성</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
             margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
         }
 
-        .layout {
-            width: 80%;
-            max-width: 700px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
         }
 
         h1 {
-            color: #333;
-            border-bottom: 2px solid #007BFF;
-            padding-bottom: 10px;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #3498db;
+        }
+
+        .form-group {
             margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
         }
 
         input[type="text"], textarea, input[type="file"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
             box-sizing: border-box;
-            margin-bottom: 20px;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
         }
 
         textarea {
-            min-height: 200px;
+            height: 300px;
             resize: vertical;
+            font-family: inherit;
         }
 
-        button {
-            background-color: #4CAF50;
-            color: #fff;
-            padding: 10px 20px;
+        .btn {
+            padding: 12px 24px;
+            margin: 10px 5px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            text-decoration: none;
             cursor: pointer;
+            font-weight: bold;
             font-size: 16px;
+            transition: all 0.3s ease;
             display: inline-block;
-            transition: background-color 0.3s ease;
         }
 
-        button:hover {
-            background-color: #45a049;
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .file-info {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        .form-note {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #2c3e50;
         }
     </style>
 </head>
 <body>
-<div class="layout">
-    <h1>게시물 작성</h1>
-    <!-- 폼 시작 -->
-    <form action="/board/writepro" method="post" enctype="multipart/form-data">
-        <!-- 제목 입력 필드 -->
-        <input name="title" type="text" placeholder="제목을 입력하세요" required>
+    <div class="container">
+        <h1>✏️ 새 게시물 작성</h1>
 
-        <!-- 내용 입력 필드 -->
-        <textarea name="content" placeholder="내용을 입력하세요" required></textarea>
+        <div class="form-note">
+            <strong>📝 작성 안내</strong><br>
+            • 제목과 내용, 작성자는 필수 입력 항목입니다<br>
+            • 파일 첨부는 선택사항입니다 (최대 10MB)<br>
+            • 허용 파일 형식: jpg, jpeg, png, gif, pdf, doc, docx, txt, zip, rar
+        </div>
 
-        <!-- 파일 첨부 필드 -->
-        <input type="file" name="file" accept="image/*" required>
+        <form th:action="@{/board/writepro}" method="post" enctype="multipart/form-data" th:object="${boardDTO}">
+            <div class="form-group">
+                <label for="title">제목 <span class="required">*</span></label>
+                <input type="text" id="title" th:field="*{title}" placeholder="게시물 제목을 입력하세요" required>
+                <div class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></div>
+            </div>
 
-        <!-- 제출 버튼 -->
-        <button type="submit">작성</button>
-    </form>
-</div>
+            <div class="form-group">
+                <label for="author">작성자 <span class="required">*</span></label>
+                <input type="text" id="author" th:field="*{author}" placeholder="작성자명을 입력하세요" required>
+                <div class="error" th:if="${#fields.hasErrors('author')}" th:errors="*{author}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="content">내용 <span class="required">*</span></label>
+                <textarea id="content" th:field="*{content}" placeholder="게시물 내용을 입력하세요&#10;&#10;여러 줄로 작성 가능합니다." required></textarea>
+                <div class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="file">첨부파일</label>
+                <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.zip,.rar">
+                <div class="file-info">
+                    📎 최대 10MB까지 업로드 가능합니다
+                </div>
+            </div>
+
+            <!-- 에러 메시지 표시 -->
+            <div class="error" th:if="${error}" style="text-align: center; margin: 20px 0; padding: 15px; background-color: #fadbd8; border-radius: 8px;">
+                <strong>⚠️ 오류:</strong> <span th:text="${error}"></span>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn btn-primary">📝 게시물 등록</button>
+                <a href="/board/list" class="btn btn-secondary">📋 목록으로</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // 폼 제출 시 중복 제출 방지
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '등록 중...';
+
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📝 게시물 등록';
+            }, 3000);
+        });
+
+        // 파일 선택 시 파일 정보 표시
+        document.getElementById('file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const fileInfo = document.querySelector('.file-info');
+
+            if (file) {
+                const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                fileInfo.innerHTML = `📎 선택된 파일: ${file.name} (${fileSize}MB)`;
+
+                if (file.size > 10 * 1024 * 1024) {
+                    fileInfo.innerHTML += '<br><span style="color: #e74c3c;">⚠️ 파일 크기가 10MB를 초과합니다!</span>';
+                }
+            } else {
+                fileInfo.innerHTML = '📎 최대 10MB까지 업로드 가능합니다';
+            }
+        });
+    </script>
 </body>
 </html>
