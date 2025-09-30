@@ -186,6 +186,4 @@ spring:
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📞 연락처
-
 프로젝트에 대한 질문이나 제안사항이 있으시면 이슈를 생성해 주세요.
