@@ -37,7 +37,7 @@ public class BoardController {
      */
     @GetMapping("/board/write")
     public String boardWriteForm(Model model) {
-        model.addAttribute("boardDTO", new BoardDTO()); // 빈 DTO 객체 추가
+        model.addAttribute("boardDTO", new BoardDTO());
         return "boardwrite";
     }
 
@@ -122,6 +122,7 @@ public class BoardController {
             return addMessage(model, "게시물을 찾을 수 없습니다.", "/board/list");
         }
     }
+
 
     /**
      * 게시물을 삭제하는 메서드

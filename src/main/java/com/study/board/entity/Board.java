@@ -4,75 +4,43 @@ import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Column;
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
 /**
  * 게시판 엔티티 클래스.
- *
- * JPA 엔티티로 사용되며, 데이터베이스와 매핑됩니다.
- * Lombok의 @Data 어노테이션으로 getter, setter, toString, equals, hashCode 메소드를 자동 생성합니다.
  */
 @Entity
 @Data
+@Table(name = "board")
 public class Board {
 
-    /**
-     * 게시물의 고유 식별자.
-     * 엔티티의 기본키이며, 데이터베이스에서 자동 생성됩니다.
-     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    /**
-     * 게시물의 제목.
-     */
     @Column(nullable = false, length = 200)
     private String title;
 
-    /**
-     * 게시물의 내용.
-     */
     @Column(nullable = false, length = 4000)
     private String content;
 
-    /**
-     * 게시물 작성자.
-     */
     @Column(nullable = false, length = 50)
     private String author;
 
-    /**
-     * 게시물 조회수.
-     */
-    @Column(nullable = false, columnDefinition = "integer default 0")
+    @Column(name = "view_count", nullable = false, columnDefinition = "integer default 0")
     private Integer viewCount = 0;
 
-    /**
-     * 첨부된 파일의 이름.
-     */
+    @Column(name = "file_name")
     private String filename;
 
-    /**
-     * 첨부된 파일의 경로.
-     */
+    @Column(name = "file_path")
     private String filepath;
 
-    /**
-     * 게시물 생성 일시.
-     */
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    /**
-     * 게시물 수정 일시.
-     */
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -82,5 +50,15 @@ public class Board {
      */
     public void increaseViewCount() {
         this.viewCount = (this.viewCount == null) ? 1 : this.viewCount + 1;
+    }
+
+    /**
+     * 엔티티 생성 전 처리
+     */
+    @PrePersist
+    public void prePersist() {
+        if (this.viewCount == null) {
+            this.viewCount = 0;
+        }
     }
 }

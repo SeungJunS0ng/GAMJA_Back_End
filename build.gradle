@@ -19,14 +19,10 @@ repositories {
 }
 
 dependencies {
-//	implementation 'io.jsonwebtoken:jjwt:0.9.1' // 최신 버전 확인 후 사용
-//	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-validation' // Bean Validation 추가
-
-//	implementation 'software.amazon.awssdk:s3:2.20.14'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'

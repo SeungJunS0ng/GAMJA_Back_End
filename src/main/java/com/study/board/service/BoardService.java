@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.persistence.EntityNotFoundException;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 public class BoardService {
 
     @Autowired
@@ -41,6 +43,7 @@ public class BoardService {
      * @param id 게시물 ID
      * @return 게시물 DTO
      */
+    @Transactional
     public BoardDTO boardView(Integer id) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
@@ -71,6 +74,7 @@ public class BoardService {
      * @param file 첨부 파일
      * @throws Exception 파일 저장 중 오류 발생 시
      */
+    @Transactional
     public void write(BoardDTO boardDTO, MultipartFile file) throws Exception {
         validateBoardData(boardDTO);
 
@@ -98,6 +102,7 @@ public class BoardService {
      * @param file 첨부 파일
      * @throws Exception 파일 저장 중 오류 발생 시
      */
+    @Transactional
     public void updateBoard(Integer id, BoardDTO boardDTO, MultipartFile file) throws Exception {
         validateBoardData(boardDTO);
 
@@ -134,11 +139,6 @@ public class BoardService {
 
     /**
      * 검색어로 게시글 목록을 조회합니다. (제목, 내용, 작성자 통합 검색)
-     *
-     * @param searchKeyword 검색어
-     * @param searchType 검색 타입 (title, content, author, all)
-     * @param pageable 페이징 정보
-     * @return 검색어가 포함된 게시글 목록
      */
     public Page<BoardDTO> boardSearchList(String searchKeyword, String searchType, Pageable pageable) {
         if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
@@ -147,6 +147,7 @@ public class BoardService {
 
         String keyword = searchKeyword.trim();
 
+        // Java 8 호환 switch 문으로 변경
         switch (searchType) {
             case "title":
                 return boardRepository.findByTitleContaining(keyword, pageable).map(this::convertToDTO);
@@ -154,7 +155,6 @@ public class BoardService {
                 return boardRepository.findByTitleContainingOrContentContaining("", keyword, pageable).map(this::convertToDTO);
             case "author":
                 return boardRepository.findByAuthorContaining(keyword, pageable).map(this::convertToDTO);
-            case "all":
             default:
                 return boardRepository.findByTitleContainingOrContentContaining(keyword, keyword, pageable).map(this::convertToDTO);
         }
@@ -175,6 +175,7 @@ public class BoardService {
      *
      * @param id 게시글 ID
      */
+    @Transactional
     public void boardDelete(Integer id) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
@@ -194,23 +195,21 @@ public class BoardService {
      * @return 변환된 BoardDTO
      */
     private BoardDTO convertToDTO(Board board) {
-        BoardDTO dto = new BoardDTO();
-        dto.setId(board.getId());
-        dto.setTitle(board.getTitle());
-        dto.setContent(board.getContent());
-        dto.setAuthor(board.getAuthor());
-        dto.setViewCount(board.getViewCount());
-        dto.setFilename(board.getFilename());
-        dto.setFilepath(board.getFilepath());
-        dto.setCreatedAt(board.getCreatedAt());
-        dto.setUpdatedAt(board.getUpdatedAt());
-        return dto;
+        return BoardDTO.builder()
+                .id(board.getId())
+                .title(board.getTitle())
+                .content(board.getContent())
+                .author(board.getAuthor())
+                .viewCount(board.getViewCount())
+                .filename(board.getFilename())
+                .filepath(board.getFilepath())
+                .createdAt(board.getCreatedAt())
+                .updatedAt(board.getUpdatedAt())
+                .build();
     }
 
     /**
      * 게시물 데이터 유효성 검증
-     *
-     * @param boardDTO 검증할 게시물 DTO
      */
     private void validateBoardData(BoardDTO boardDTO) {
         if (boardDTO.getTitle() == null || boardDTO.getTitle().trim().isEmpty()) {
@@ -235,48 +234,36 @@ public class BoardService {
 
     /**
      * 파일을 저장하는 메서드
-     *
-     * @param file 첨부 파일
-     * @return 저장된 파일의 이름
-     * @throws IOException 파일 저장 중 오류 발생 시
      */
     private String saveFile(MultipartFile file) throws IOException {
-        // 파일 저장 디렉토리 생성
         File directory = new File(FILE_DIRECTORY);
         if (!directory.exists()) {
             directory.mkdirs();
         }
 
-        // UUID를 이용해 고유한 파일 이름 생성
         String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
         File saveFile = new File(FILE_DIRECTORY, fileName);
 
-        // 파일을 지정한 경로에 저장
         file.transferTo(saveFile);
         return fileName;
     }
 
     /**
      * 파일을 삭제하는 메서드
-     *
-     * @param filename 삭제할 파일명
      */
     private void deleteFile(String filename) {
         try {
             File file = new File(FILE_DIRECTORY, filename);
-            if (file.exists()) {
-                file.delete();
+            if (file.exists() && file.delete()) {
+                System.out.println("파일 삭제 성공: " + filename);
             }
         } catch (Exception e) {
-            // 파일 삭제 실패는 로그만 남기고 진행
             System.err.println("파일 삭제 실패: " + filename + ", 오류: " + e.getMessage());
         }
     }
 
     /**
      * 파일 유효성 검증
-     *
-     * @param file 검증할 파일
      */
     private void validateFile(MultipartFile file) {
         if (file.getSize() > MAX_FILE_SIZE) {
