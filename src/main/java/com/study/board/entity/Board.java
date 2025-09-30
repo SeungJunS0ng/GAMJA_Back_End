@@ -42,6 +42,18 @@ public class Board {
     private String content;
 
     /**
+     * 게시물 작성자.
+     */
+    @Column(nullable = false, length = 50)
+    private String author;
+
+    /**
+     * 게시물 조회수.
+     */
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer viewCount = 0;
+
+    /**
      * 첨부된 파일의 이름.
      */
     private String filename;
@@ -64,4 +76,11 @@ public class Board {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    /**
+     * 조회수 증가 메서드
+     */
+    public void increaseViewCount() {
+        this.viewCount = (this.viewCount == null) ? 1 : this.viewCount + 1;
+    }
 }

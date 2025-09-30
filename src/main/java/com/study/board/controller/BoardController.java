@@ -65,24 +65,46 @@ public class BoardController {
     }
 
     /**
-     * 게시물 목록을 보여주는 메서드
+     * 게시물 목록을 보여주는 메서드 (통합 검색 지원)
      */
     @GetMapping("/board/list")
     public String boardList(Model model,
                            @PageableDefault(page = 0, size = 6, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
-                           @RequestParam(required = false) String searchKeyword) {
+                           @RequestParam(required = false) String searchKeyword,
+                           @RequestParam(required = false, defaultValue = "all") String searchType) {
 
-        Page<BoardDTO> list = (searchKeyword == null || searchKeyword.trim().isEmpty())
-                ? boardService.boardList(pageable)
-                : boardService.boardSearchList(searchKeyword.trim(), pageable);
+        Page<BoardDTO> list;
+
+        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+            list = boardService.boardList(pageable);
+        } else {
+            list = boardService.boardSearchList(searchKeyword.trim(), searchType, pageable);
+        }
 
         addPaginationAttributes(model, list);
         model.addAttribute("list", list);
         model.addAttribute("searchKeyword", searchKeyword);
+        model.addAttribute("searchType", searchType);
 
         if (searchKeyword != null && !searchKeyword.trim().isEmpty() && list.getContent().isEmpty()) {
             model.addAttribute("message", "검색 결과가 없습니다.");
         }
+
+        return "boardlist";
+    }
+
+    /**
+     * 인기 게시물 목록을 보여주는 메서드
+     */
+    @GetMapping("/board/popular")
+    public String popularBoardList(Model model,
+                                  @PageableDefault(page = 0, size = 10, sort = "viewCount", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<BoardDTO> list = boardService.getPopularPosts(pageable);
+
+        addPaginationAttributes(model, list);
+        model.addAttribute("list", list);
+        model.addAttribute("isPopularPage", true);
 
         return "boardlist";
     }
@@ -120,7 +142,7 @@ public class BoardController {
     @GetMapping("/board/modify/{id}")
     public String boardModify(@PathVariable Integer id, Model model) {
         try {
-            BoardDTO boardDTO = boardService.boardView(id);
+            BoardDTO boardDTO = boardService.boardViewWithoutIncrement(id);
             model.addAttribute("board", boardDTO);
             model.addAttribute("currentFile", boardDTO.getFilename());
             return "boardmodify";
@@ -156,44 +178,12 @@ public class BoardController {
     }
 
     /**
-     * 메시지를 추가하는 메서드 (에러 및 성공 메시지 통합)
-     */
-    private String addMessage(Model model, String message, String searchUrl) {
-        model.addAttribute("message", message);
-        model.addAttribute("searchUrl", searchUrl);
-        return "message";
-    }
-
-    /**
-     * 페이지 정보를 계산하여 모델에 추가하는 메서드
-     */
-    private void addPaginationAttributes(Model model, Page<BoardDTO> list) {
-        int nowPage = list.getPageable().getPageNumber() + 1;
-        int totalPages = list.getTotalPages();
-        int pageSize = 10;
-
-        int startPage = Math.max(nowPage - (pageSize / 2), 1);
-        int endPage = Math.min(startPage + pageSize - 1, totalPages);
-
-        if (endPage - startPage < pageSize - 1) {
-            startPage = Math.max(endPage - (pageSize - 1), 1);
-        }
-
-        model.addAttribute("nowPage", nowPage);
-        model.addAttribute("startPage", startPage);
-        model.addAttribute("endPage", endPage);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("hasPrevious", list.hasPrevious());
-        model.addAttribute("hasNext", list.hasNext());
-    }
-
-    /**
      * 파일 다운로드를 처리하는 메서드
      */
     @GetMapping("/board/download/{id}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable Integer id) throws IOException {
         try {
-            BoardDTO boardDTO = boardService.boardView(id);
+            BoardDTO boardDTO = boardService.boardViewWithoutIncrement(id);
 
             if (boardDTO.getFilename() == null || boardDTO.getFilename().isEmpty()) {
                 throw new FileNotFoundException("첨부파일이 없습니다.");
@@ -229,5 +219,37 @@ public class BoardController {
     @GetMapping("/")
     public String index() {
         return "redirect:/board/list";
+    }
+
+    /**
+     * 메시지를 추가하는 메서드 (에러 및 성공 메시지 통합)
+     */
+    private String addMessage(Model model, String message, String searchUrl) {
+        model.addAttribute("message", message);
+        model.addAttribute("searchUrl", searchUrl);
+        return "message";
+    }
+
+    /**
+     * 페이지 정보를 계산하여 모델에 추가하는 메서드
+     */
+    private void addPaginationAttributes(Model model, Page<BoardDTO> list) {
+        int nowPage = list.getPageable().getPageNumber() + 1;
+        int totalPages = list.getTotalPages();
+        int pageSize = 10;
+
+        int startPage = Math.max(nowPage - (pageSize / 2), 1);
+        int endPage = Math.min(startPage + pageSize - 1, totalPages);
+
+        if (endPage - startPage < pageSize - 1) {
+            startPage = Math.max(endPage - (pageSize - 1), 1);
+        }
+
+        model.addAttribute("nowPage", nowPage);
+        model.addAttribute("startPage", startPage);
+        model.addAttribute("endPage", endPage);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("hasPrevious", list.hasPrevious());
+        model.addAttribute("hasNext", list.hasNext());
     }
 }

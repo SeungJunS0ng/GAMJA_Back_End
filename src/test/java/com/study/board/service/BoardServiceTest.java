@@ -46,6 +46,8 @@ class BoardServiceTest {
         testBoard.setId(1);
         testBoard.setTitle("테스트 제목");
         testBoard.setContent("테스트 내용");
+        testBoard.setAuthor("테스트 작성자");
+        testBoard.setViewCount(0);
         testBoard.setFilename("test.txt");
         testBoard.setFilepath("/files/test.txt");
         testBoard.setCreatedAt(LocalDateTime.now());
@@ -55,6 +57,8 @@ class BoardServiceTest {
         testBoardDTO.setId(1);
         testBoardDTO.setTitle("테스트 제목");
         testBoardDTO.setContent("테스트 내용");
+        testBoardDTO.setAuthor("테스트 작성자");
+        testBoardDTO.setViewCount(0);
         testBoardDTO.setFilename("test.txt");
         testBoardDTO.setFilepath("/files/test.txt");
     }
@@ -154,31 +158,33 @@ class BoardServiceTest {
     void boardSearchList_검색어있음_성공() {
         // Given
         String searchKeyword = "테스트";
+        String searchType = "all";
         List<Board> boards = Arrays.asList(testBoard);
         Page<Board> boardPage = new PageImpl<>(boards);
         Pageable pageable = PageRequest.of(0, 10);
-        when(boardRepository.findByTitleContaining(searchKeyword, pageable)).thenReturn(boardPage);
+        when(boardRepository.findByTitleContainingOrContentContaining(searchKeyword, searchKeyword, pageable)).thenReturn(boardPage);
 
         // When
-        Page<BoardDTO> result = boardService.boardSearchList(searchKeyword, pageable);
+        Page<BoardDTO> result = boardService.boardSearchList(searchKeyword, searchType, pageable);
 
         // Then
         assertNotNull(result);
         assertEquals(1, result.getContent().size());
-        verify(boardRepository, times(1)).findByTitleContaining(searchKeyword, pageable);
+        verify(boardRepository, times(1)).findByTitleContainingOrContentContaining(searchKeyword, searchKeyword, pageable);
     }
 
     @Test
     void boardSearchList_빈검색어_전체목록반환() {
         // Given
         String searchKeyword = "";
+        String searchType = "all";
         List<Board> boards = Arrays.asList(testBoard);
         Page<Board> boardPage = new PageImpl<>(boards);
         Pageable pageable = PageRequest.of(0, 10);
         when(boardRepository.findAll(pageable)).thenReturn(boardPage);
 
         // When
-        Page<BoardDTO> result = boardService.boardSearchList(searchKeyword, pageable);
+        Page<BoardDTO> result = boardService.boardSearchList(searchKeyword, searchType, pageable);
 
         // Then
         assertNotNull(result);

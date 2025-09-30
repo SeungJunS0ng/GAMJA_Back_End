@@ -36,12 +36,28 @@ public class BoardService {
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     /**
-     * 게시물 조회를 위한 메서드
+     * 게시물 조회를 위한 메서드 (조회수 증가 포함)
      *
      * @param id 게시물 ID
      * @return 게시물 DTO
      */
     public BoardDTO boardView(Integer id) {
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
+
+        // 조회수 증가
+        boardRepository.increaseViewCount(id);
+
+        return convertToDTO(board);
+    }
+
+    /**
+     * 게시물 조회 (조회수 증가 없음)
+     *
+     * @param id 게시물 ID
+     * @return 게시물 DTO
+     */
+    public BoardDTO boardViewWithoutIncrement(Integer id) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
 
@@ -61,6 +77,8 @@ public class BoardService {
         Board board = new Board();
         board.setTitle(boardDTO.getTitle().trim());
         board.setContent(boardDTO.getContent().trim());
+        board.setAuthor(boardDTO.getAuthor().trim());
+        board.setViewCount(0);
 
         if (file != null && !file.isEmpty()) {
             validateFile(file);
@@ -88,10 +106,14 @@ public class BoardService {
 
         board.setTitle(boardDTO.getTitle().trim());
         board.setContent(boardDTO.getContent().trim());
+        board.setAuthor(boardDTO.getAuthor().trim());
 
         if (file != null && !file.isEmpty()) {
             validateFile(file);
-            // 기존 파일 삭제 로직 추가 가능
+            // 기존 파일 삭제
+            if (board.getFilename() != null && !board.getFilename().isEmpty()) {
+                deleteFile(board.getFilename());
+            }
             String fileName = saveFile(file);
             board.setFilename(fileName);
             board.setFilepath("/files/" + fileName);
@@ -111,17 +133,41 @@ public class BoardService {
     }
 
     /**
-     * 검색어로 게시글 목록을 조회합니다.
+     * 검색어로 게시글 목록을 조회합니다. (제목, 내용, 작성자 통합 검색)
      *
      * @param searchKeyword 검색어
+     * @param searchType 검색 타입 (title, content, author, all)
      * @param pageable 페이징 정보
      * @return 검색어가 포함된 게시글 목록
      */
-    public Page<BoardDTO> boardSearchList(String searchKeyword, Pageable pageable) {
+    public Page<BoardDTO> boardSearchList(String searchKeyword, String searchType, Pageable pageable) {
         if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
             return boardList(pageable);
         }
-        return boardRepository.findByTitleContaining(searchKeyword.trim(), pageable).map(this::convertToDTO);
+
+        String keyword = searchKeyword.trim();
+
+        switch (searchType) {
+            case "title":
+                return boardRepository.findByTitleContaining(keyword, pageable).map(this::convertToDTO);
+            case "content":
+                return boardRepository.findByTitleContainingOrContentContaining("", keyword, pageable).map(this::convertToDTO);
+            case "author":
+                return boardRepository.findByAuthorContaining(keyword, pageable).map(this::convertToDTO);
+            case "all":
+            default:
+                return boardRepository.findByTitleContainingOrContentContaining(keyword, keyword, pageable).map(this::convertToDTO);
+        }
+    }
+
+    /**
+     * 인기 게시물 목록을 조회합니다.
+     *
+     * @param pageable 페이징 정보
+     * @return 인기 게시물 목록
+     */
+    public Page<BoardDTO> getPopularPosts(Pageable pageable) {
+        return boardRepository.findPopularPosts(pageable).map(this::convertToDTO);
     }
 
     /**
@@ -152,6 +198,8 @@ public class BoardService {
         dto.setId(board.getId());
         dto.setTitle(board.getTitle());
         dto.setContent(board.getContent());
+        dto.setAuthor(board.getAuthor());
+        dto.setViewCount(board.getViewCount());
         dto.setFilename(board.getFilename());
         dto.setFilepath(board.getFilepath());
         dto.setCreatedAt(board.getCreatedAt());
@@ -171,32 +219,17 @@ public class BoardService {
         if (boardDTO.getContent() == null || boardDTO.getContent().trim().isEmpty()) {
             throw new IllegalArgumentException("내용은 필수 입력 항목입니다.");
         }
+        if (boardDTO.getAuthor() == null || boardDTO.getAuthor().trim().isEmpty()) {
+            throw new IllegalArgumentException("작성자는 필수 입력 항목입니다.");
+        }
         if (boardDTO.getTitle().length() > 200) {
             throw new IllegalArgumentException("제목은 200자 이하로 입력해주세요.");
         }
         if (boardDTO.getContent().length() > 4000) {
             throw new IllegalArgumentException("내용은 4000자 이하로 입력해주세요.");
         }
-    }
-
-    /**
-     * 파일 유효성 검증
-     *
-     * @param file 검증할 파일
-     */
-    private void validateFile(MultipartFile file) {
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("파일 크기는 10MB 이하여야 합니다.");
-        }
-
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || originalFilename.isEmpty()) {
-            throw new IllegalArgumentException("파일명이 올바르지 않습니다.");
-        }
-
-        String extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
-        if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. 허용 형식: " + ALLOWED_EXTENSIONS);
+        if (boardDTO.getAuthor().length() > 50) {
+            throw new IllegalArgumentException("작성자는 50자 이하로 입력해주세요.");
         }
     }
 
@@ -237,6 +270,27 @@ public class BoardService {
         } catch (Exception e) {
             // 파일 삭제 실패는 로그만 남기고 진행
             System.err.println("파일 삭제 실패: " + filename + ", 오류: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 파일 유효성 검증
+     *
+     * @param file 검증할 파일
+     */
+    private void validateFile(MultipartFile file) {
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("파일 크기는 10MB 이하여야 합니다.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            throw new IllegalArgumentException("파일명이 올바르지 않습니다.");
+        }
+
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. 허용 형식: " + ALLOWED_EXTENSIONS);
         }
     }
 }
