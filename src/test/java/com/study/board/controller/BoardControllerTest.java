@@ -5,14 +5,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(BoardController.class)
-@WithMockUser
 class BoardControllerTest {
 
     @Autowired
@@ -26,5 +24,19 @@ class BoardControllerTest {
         mockMvc.perform(get("/"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/board/list"));
+    }
+
+    @Test
+    void testBoardList() throws Exception {
+        mockMvc.perform(get("/board/list"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("boardlist"));
+    }
+
+    @Test
+    void testBoardWriteForm() throws Exception {
+        mockMvc.perform(get("/board/write"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("boardwrite"));
     }
 }

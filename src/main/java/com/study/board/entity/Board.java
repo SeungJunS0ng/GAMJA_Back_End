@@ -33,6 +33,7 @@ public class Board {
     @Column(nullable = false, length = 50)
     private String author;
 
+    @Builder.Default
     @Column(name = "view_count", nullable = false, columnDefinition = "integer default 0")
     private Integer viewCount = 0;
 
