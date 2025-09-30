@@ -1,18 +1,23 @@
 package com.study.board.entity;
 
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * 게시판 엔티티 클래스.
- */
 @Entity
-@Data
 @Table(name = "board")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Board {
 
     @Id
@@ -37,28 +42,11 @@ public class Board {
     @Column(name = "file_path")
     private String filepath;
 
-    @CreationTimestamp
+    @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    /**
-     * 조회수 증가 메서드
-     */
-    public void increaseViewCount() {
-        this.viewCount = (this.viewCount == null) ? 1 : this.viewCount + 1;
-    }
-
-    /**
-     * 엔티티 생성 전 처리
-     */
-    @PrePersist
-    public void prePersist() {
-        if (this.viewCount == null) {
-            this.viewCount = 0;
-        }
-    }
 }

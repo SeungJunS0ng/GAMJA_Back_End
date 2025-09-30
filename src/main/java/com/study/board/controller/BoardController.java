@@ -2,11 +2,17 @@ package com.study.board.controller;
 
 import com.study.board.dto.BoardDTO;
 import com.study.board.service.BoardService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,290 +21,218 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.validation.Valid;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Controller
+@RequestMapping("/board")
+@Slf4j
+@Tag(name = "게시판", description = "게시판 관리 API")
 public class BoardController {
 
     @Autowired
     private BoardService boardService;
 
-    private static final String FILE_DIRECTORY = System.getProperty("user.dir") + File.separator +
-            "src" + File.separator + "main" + File.separator + "resources" + File.separator +
-            "static" + File.separator + "files";
+    @GetMapping("/list")
+    @Operation(summary = "게시글 목록 조회", description = "페이징된 게시글 목록을 조회합니다.")
+    public String boardList(Model model,
+                           @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") int page,
+                           @Parameter(description = "검색 키워드") @RequestParam(value = "searchKeyword", required = false) String searchKeyword,
+                           @Parameter(description = "검색 타입") @RequestParam(value = "searchType", defaultValue = "all") String searchType) {
 
-    /**
-     * 메인 페이지 리다이렉트
-     */
-    @GetMapping("/")
-    public String index() {
-        return "redirect:/board/list";
+        log.info("게시글 목록 요청 - 페이지: {}, 검색어: {}, 검색타입: {}", page, searchKeyword, searchType);
+
+        Pageable pageable = PageRequest.of(page, 10, Sort.by("id").descending());
+        Page<BoardDTO> paging;
+
+        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+            paging = boardService.boardList(pageable);
+        } else {
+            paging = boardService.boardSearchList(searchKeyword, searchType, pageable);
+        }
+
+        model.addAttribute("paging", paging);
+        model.addAttribute("searchKeyword", searchKeyword);
+        model.addAttribute("searchType", searchType);
+
+        return "boardlist";
     }
 
-    /**
-     * 게시물 작성 폼을 보여주는 메서드
-     */
-    @GetMapping("/board/write")
+    @GetMapping("/write")
+    @Operation(summary = "게시글 작성 폼", description = "새 게시글 작성 폼을 표시합니다.")
     public String boardWriteForm(Model model) {
         model.addAttribute("boardDTO", new BoardDTO());
         return "boardwrite";
     }
 
-    /**
-     * 게시물을 실제로 작성하는 메서드
-     */
-    @PostMapping("/board/writepro")
+    @PostMapping("/writepro")
+    @Operation(summary = "게시글 작성 처리", description = "새 게시글을 작성합니다.")
     public String boardWritePro(@Valid @ModelAttribute BoardDTO boardDTO,
                                BindingResult bindingResult,
+                               @RequestParam(value = "file", required = false) MultipartFile file,
                                Model model,
-                               @RequestParam(value = "file", required = false) MultipartFile file) throws Exception {
+                               RedirectAttributes redirectAttributes) {
+
+        log.info("게시글 작성 처리 - 제목: {}", boardDTO.getTitle());
 
         if (bindingResult.hasErrors()) {
+            log.warn("게시글 작성 유효성 검증 실패: {}", bindingResult.getAllErrors());
+            model.addAttribute("boardDTO", boardDTO);
             return "boardwrite";
         }
 
         try {
-            boardService.write(boardDTO, file);
-            return addMessage(model, "글 작성이 완료되었습니다.", "/board/list");
+            BoardDTO savedBoard = boardService.write(boardDTO, file);
+            redirectAttributes.addFlashAttribute("message", "게시글이 성공적으로 작성되었습니다.");
+            return "redirect:/board/view?id=" + savedBoard.getId();
         } catch (Exception e) {
+            log.error("게시글 작성 실패: {}", e.getMessage());
+            model.addAttribute("boardDTO", boardDTO);
             model.addAttribute("error", e.getMessage());
             return "boardwrite";
         }
     }
 
-    /**
-     * 게시물 목록을 보여주는 메서드 (통합 검색 지원)
-     */
-    @GetMapping("/board/list")
-    public String boardList(Model model,
-                           @PageableDefault(page = 0, size = 6, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
-                           @RequestParam(required = false) String searchKeyword,
-                           @RequestParam(required = false, defaultValue = "all") String searchType) {
+    @GetMapping("/view")
+    @Operation(summary = "게시글 상세 조회", description = "특정 게시글의 상세 내용을 조회합니다.")
+    public String boardView(Model model,
+                           @Parameter(description = "게시글 ID") @RequestParam Integer id,
+                           RedirectAttributes redirectAttributes) {
 
-        Page<BoardDTO> list;
+        log.info("게시글 상세 조회 - ID: {}", id);
 
-        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
-            list = boardService.boardList(pageable);
-        } else {
-            list = boardService.boardSearchList(searchKeyword.trim(), searchType, pageable);
-        }
-
-        addPaginationAttributes(model, list);
-        model.addAttribute("list", list);
-        model.addAttribute("searchKeyword", searchKeyword);
-        model.addAttribute("searchType", searchType);
-
-        if (searchKeyword != null && !searchKeyword.trim().isEmpty() && list.getContent().isEmpty()) {
-            model.addAttribute("message", "검색 결과가 없습니다.");
-        }
-
-        return "boardlist";
-    }
-
-    /**
-     * 인기 게시물 목록을 보여주는 메서드
-     */
-    @GetMapping("/board/popular")
-    public String popularBoardList(Model model,
-                                  @PageableDefault(page = 0, size = 10, sort = "viewCount", direction = Sort.Direction.DESC) Pageable pageable) {
-
-        Page<BoardDTO> list = boardService.getPopularPosts(pageable);
-
-        addPaginationAttributes(model, list);
-        model.addAttribute("list", list);
-        model.addAttribute("isPopularPage", true);
-
-        return "boardlist";
-    }
-
-    /**
-     * 특정 게시물의 상세 정보를 보여주는 메서드
-     */
-    @GetMapping("/board/view")
-    public String boardView(Model model, @RequestParam Integer id) {
         try {
             BoardDTO boardDTO = boardService.boardView(id);
             model.addAttribute("board", boardDTO);
             return "boardview";
         } catch (Exception e) {
-            return addMessage(model, "게시물을 찾을 수 없습니다.", "/board/list");
+            log.error("게시글 조회 실패 - ID: {}, 오류: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "게시글을 찾을 수 없습니다.");
+            return "redirect:/board/list";
         }
     }
 
-    /**
-     * 게시물을 삭제하는 메서드
-     */
-    @GetMapping("/board/delete")
-    public String boardDelete(@RequestParam Integer id, Model model) {
+    @GetMapping("/delete")
+    @Operation(summary = "게시글 삭제", description = "특정 게시글을 삭제합니다.")
+    public String boardDelete(@Parameter(description = "게시글 ID") @RequestParam Integer id,
+                             RedirectAttributes redirectAttributes) {
+
+        log.info("게시글 삭제 - ID: {}", id);
+
         try {
             boardService.boardDelete(id);
-            return addMessage(model, "게시물이 삭제되었습니다.", "/board/list");
+            redirectAttributes.addFlashAttribute("message", "게시글이 성공적으로 삭제되었습니다.");
         } catch (Exception e) {
-            return addMessage(model, "게시물 삭제 중 오류가 발생했습니다.", "/board/list");
+            log.error("게시글 삭제 실패 - ID: {}, 오류: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "게시글 삭제에 실패했습니다.");
         }
+
+        return "redirect:/board/list";
     }
 
-    /**
-     * 게시물 수정 폼을 보여주는 메서드
-     */
-    @GetMapping("/board/modify/{id}")
-    public String boardModify(@PathVariable Integer id, Model model) {
+    @GetMapping("/modify/{id}")
+    @Operation(summary = "게시글 수정 폼", description = "게시글 수정 폼을 표시합니다.")
+    public String boardModify(@Parameter(description = "게시글 ID") @PathVariable("id") Integer id,
+                             Model model,
+                             RedirectAttributes redirectAttributes) {
+
+        log.info("게시글 수정 폼 - ID: {}", id);
+
         try {
             BoardDTO boardDTO = boardService.boardViewWithoutIncrement(id);
-            model.addAttribute("board", boardDTO);
-            model.addAttribute("currentFile", boardDTO.getFilename());
+            model.addAttribute("boardDTO", boardDTO);
             return "boardmodify";
         } catch (Exception e) {
-            return addMessage(model, "게시물을 찾을 수 없습니다.", "/board/list");
+            log.error("게시글 수정 폼 로드 실패 - ID: {}, 오류: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "게시글을 찾을 수 없습니다.");
+            return "redirect:/board/list";
         }
     }
 
-    /**
-     * 게시물을 수정하는 메서드
-     */
-    @PostMapping("/board/update/{id}")
-    public String boardUpdate(@PathVariable Integer id,
+    @PostMapping("/update/{id}")
+    @Operation(summary = "게시글 수정 처리", description = "게시글을 수정합니다.")
+    public String boardUpdate(@Parameter(description = "게시글 ID") @PathVariable("id") Integer id,
                              @Valid @ModelAttribute BoardDTO boardDTO,
                              BindingResult bindingResult,
                              @RequestParam(value = "file", required = false) MultipartFile file,
-                             Model model) throws Exception {
+                             Model model,
+                             RedirectAttributes redirectAttributes) {
+
+        log.info("게시글 수정 처리 - ID: {}", id);
 
         if (bindingResult.hasErrors()) {
-            model.addAttribute("board", boardDTO);
+            log.warn("게시글 수정 유효성 검증 실패: {}", bindingResult.getAllErrors());
+            boardDTO.setId(id);
+            model.addAttribute("boardDTO", boardDTO);
             return "boardmodify";
         }
 
         try {
             boardService.updateBoard(id, boardDTO, file);
-            return addMessage(model, "게시물이 수정되었습니다.", "/board/view?id=" + id);
+            redirectAttributes.addFlashAttribute("message", "게시글이 성공적으로 수정되었습니다.");
+            return "redirect:/board/view?id=" + id;
         } catch (Exception e) {
+            log.error("게시글 수정 실패 - ID: {}, 오류: {}", id, e.getMessage());
+            boardDTO.setId(id);
+            model.addAttribute("boardDTO", boardDTO);
             model.addAttribute("error", e.getMessage());
-            model.addAttribute("board", boardDTO);
             return "boardmodify";
         }
     }
 
-    /**
-     * 파일 다운로드를 처리하는 메서드
-     */
-    @GetMapping("/board/download/{id}")
-    public ResponseEntity<byte[]> downloadFile(@PathVariable Integer id) throws IOException {
+    @GetMapping("/popular")
+    @Operation(summary = "인기 게시글 목록", description = "조회수 기준 인기 게시글 목록을 조회합니다.")
+    public String popularPosts(Model model,
+                              @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") int page) {
+
+        log.info("인기 게시글 목록 요청 - 페이지: {}", page);
+
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<BoardDTO> paging = boardService.getPopularPosts(pageable);
+
+        model.addAttribute("paging", paging);
+        model.addAttribute("isPopular", true);
+
+        return "boardlist";
+    }
+
+    @GetMapping("/download")
+    @Operation(summary = "파일 다운로드", description = "게시글의 첨부파일을 다운로드합니다.")
+    public ResponseEntity<Resource> downloadFile(@Parameter(description = "게시글 ID") @RequestParam Integer id) {
+
+        log.info("파일 다운로드 요청 - 게시글 ID: {}", id);
+
         try {
             BoardDTO boardDTO = boardService.boardViewWithoutIncrement(id);
 
-            if (boardDTO.getFilename() == null || boardDTO.getFilename().isEmpty()) {
-                throw new FileNotFoundException("첨부파일이 없습니다.");
+            if (boardDTO.getFilepath() == null) {
+                throw new RuntimeException("첨부파일이 없습니다.");
             }
 
-            File file = new File(FILE_DIRECTORY, boardDTO.getFilename());
+            Path filePath = Paths.get(boardDTO.getFilepath());
+            Resource resource = new UrlResource(filePath.toUri());
 
-            if (!file.exists()) {
-                throw new FileNotFoundException("파일을 찾을 수 없습니다: " + file.getAbsolutePath());
+            if (resource.exists() && resource.isReadable()) {
+                String contentType = Files.probeContentType(filePath);
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"" + boardDTO.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                throw new RuntimeException("파일을 찾을 수 없습니다.");
             }
-
-            if (file.length() > 50 * 1024 * 1024) {
-                throw new IllegalStateException("파일 크기가 너무 큽니다.");
-            }
-
-            byte[] fileBytes = Files.readAllBytes(file.toPath());
-
-            // 원본 파일명 추출 (UUID 제거)
-            String originalFilename = boardDTO.getFilename();
-            if (originalFilename.contains("_")) {
-                originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                           "attachment; filename=\"" + originalFilename + "\"")
-                    .body(fileBytes);
-
         } catch (Exception e) {
-            throw new FileNotFoundException("파일 다운로드 중 오류가 발생했습니다: " + e.getMessage());
-        }
-    }
-
-    /**
-     * REST API: 게시물 목록 조회
-     */
-    @GetMapping("/api/boards")
-    @ResponseBody
-    public ResponseEntity<Page<BoardDTO>> getBoardList(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
-            @RequestParam(required = false) String searchKeyword,
-            @RequestParam(required = false, defaultValue = "all") String searchType) {
-
-        Page<BoardDTO> list;
-        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
-            list = boardService.boardList(pageable);
-        } else {
-            list = boardService.boardSearchList(searchKeyword.trim(), searchType, pageable);
-        }
-
-        return ResponseEntity.ok(list);
-    }
-
-    /**
-     * REST API: 게시물 상세 조회
-     */
-    @GetMapping("/api/boards/{id}")
-    @ResponseBody
-    public ResponseEntity<BoardDTO> getBoardDetail(@PathVariable Integer id) {
-        try {
-            BoardDTO boardDTO = boardService.boardView(id);
-            return ResponseEntity.ok(boardDTO);
-        } catch (Exception e) {
+            log.error("파일 다운로드 실패 - 게시글 ID: {}, 오류: {}", id, e.getMessage());
             return ResponseEntity.notFound().build();
         }
-    }
-
-    /**
-     * REST API: 인기 게시물 조회
-     */
-    @GetMapping("/api/boards/popular")
-    @ResponseBody
-    public ResponseEntity<Page<BoardDTO>> getPopularBoards(
-            @PageableDefault(page = 0, size = 10, sort = "viewCount", direction = Sort.Direction.DESC) Pageable pageable) {
-
-        Page<BoardDTO> list = boardService.getPopularPosts(pageable);
-        return ResponseEntity.ok(list);
-    }
-
-    /**
-     * 메시지를 추가하는 메서드 (에러 및 성공 메시지 통합)
-     */
-    private String addMessage(Model model, String message, String searchUrl) {
-        model.addAttribute("message", message);
-        model.addAttribute("searchUrl", searchUrl);
-        return "message";
-    }
-
-    /**
-     * 페이지 정보를 계산하여 모델에 추가하는 메서드
-     */
-    private void addPaginationAttributes(Model model, Page<BoardDTO> list) {
-        int nowPage = list.getPageable().getPageNumber() + 1;
-        int totalPages = list.getTotalPages();
-        int pageSize = 10;
-
-        int startPage = Math.max(nowPage - (pageSize / 2), 1);
-        int endPage = Math.min(startPage + pageSize - 1, totalPages);
-
-        if (endPage - startPage < pageSize - 1) {
-            startPage = Math.max(endPage - (pageSize - 1), 1);
-        }
-
-        model.addAttribute("nowPage", nowPage);
-        model.addAttribute("startPage", startPage);
-        model.addAttribute("endPage", endPage);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("hasPrevious", list.hasPrevious());
-        model.addAttribute("hasNext", list.hasNext());
     }
 }

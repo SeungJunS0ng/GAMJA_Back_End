@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>알림</title>
+    <title>메시지 - 감자 게시판</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             margin: 0;
             padding: 20px;
             line-height: 1.6;
@@ -17,18 +17,18 @@
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
+        .message-container {
             background-color: white;
             border-radius: 15px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             padding: 40px;
             text-align: center;
+            max-width: 500px;
+            width: 100%;
         }
 
         .icon {
-            font-size: 64px;
+            font-size: 48px;
             margin-bottom: 20px;
         }
 
@@ -50,20 +50,16 @@
             font-size: 24px;
         }
 
-        .message {
-            font-size: 18px;
-            color: #2c3e50;
+        .message-text {
+            color: #5a6c7d;
+            font-size: 16px;
             margin-bottom: 30px;
             line-height: 1.5;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #3498db;
         }
 
         .btn {
-            padding: 15px 30px;
-            margin: 10px;
+            padding: 12px 30px;
+            margin: 8px;
             border: none;
             border-radius: 8px;
             text-decoration: none;
@@ -79,78 +75,62 @@
             color: white;
         }
 
-        .btn-success {
-            background-color: #27ae60;
+        .btn-secondary {
+            background-color: #95a5a6;
             color: white;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .auto-redirect {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #7f8c8d;
         }
 
         .countdown {
-            color: #7f8c8d;
-            font-size: 14px;
-            margin-top: 20px;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            font-weight: bold;
+            color: #e74c3c;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 아이콘 표시 -->
+    <div class="message-container">
         <div class="icon">
-            <span th:if="${message != null and (message.contains('성공') or message.contains('완료') or message.contains('등록'))}" class="success-icon">✅</span>
-            <span th:if="${message != null and (message.contains('오류') or message.contains('실패') or message.contains('없습니다'))}" class="error-icon">❌</span>
-            <span th:unless="${message != null and (message.contains('성공') or message.contains('완료') or message.contains('등록') or message.contains('오류') or message.contains('실패') or message.contains('없습니다'))}" class="info-icon">ℹ️</span>
+            <span th:if="${type == 'success'}" class="success-icon">✅</span>
+            <span th:if="${type == 'error'}" class="error-icon">❌</span>
+            <span th:if="${type == 'info'}" class="info-icon">ℹ️</span>
+            <span th:unless="${type}" class="info-icon">📝</span>
         </div>
 
-        <!-- 제목 -->
-        <h1>알림</h1>
+        <h1 th:if="${type == 'success'}">작업 완료</h1>
+        <h1 th:if="${type == 'error'}">오류 발생</h1>
+        <h1 th:if="${type == 'info'}">알림</h1>
+        <h1 th:unless="${type}">메시지</h1>
 
-        <!-- 메시지 내용 -->
-        <div class="message" th:text="${message}">
-            메시지가 표시됩니다.
+        <div class="message-text" th:text="${message}">
+            메시지 내용이 여기에 표시됩니다.
         </div>
 
-        <!-- 버튼 그룹 -->
         <div>
-            <a th:href="${searchUrl}" class="btn btn-primary" id="redirectBtn">
-                <span th:if="${searchUrl == '/board/list'}">📋 목록으로 이동</span>
-                <span th:if="${searchUrl == '/board/write'}">✏️ 작성 페이지로</span>
-                <span th:unless="${searchUrl == '/board/list' or searchUrl == '/board/write'}">🔙 이동</span>
+            <a th:href="${url != null ? url : '/board/list'}" class="btn btn-primary">
+                <span th:text="${buttonText != null ? buttonText : '목록으로 돌아가기'}">목록으로 돌아가기</span>
             </a>
-            <a href="/board/list" class="btn btn-success">🏠 메인으로</a>
+            <a href="/board/write" class="btn btn-secondary">새 글 작성</a>
         </div>
 
-        <!-- 자동 리다이렉트 카운트다운 -->
-        <div class="countdown">
-            <span class="loading"></span>
-            <span id="countdown">3</span>초 후 자동으로 이동합니다
+        <div class="auto-redirect" th:if="${autoRedirect}">
+            <span class="countdown" id="countdown">5</span>초 후 자동으로 이동합니다.
         </div>
     </div>
 
-    <script>
-        // 3초 후 자동 리다이렉트
-        let countdown = 3;
+    <script th:if="${autoRedirect}">
+        let countdown = 5;
         const countdownElement = document.getElementById('countdown');
-        const redirectUrl = /*[[${searchUrl}]]*/ '/board/list';
+        const redirectUrl = /*[[${url != null ? url : '/board/list'}]]*/ '/board/list';
 
         const timer = setInterval(() => {
             countdown--;
@@ -161,19 +141,6 @@
                 window.location.href = redirectUrl;
             }
         }, 1000);
-
-        // 버튼 클릭 시 타이머 중지
-        document.getElementById('redirectBtn').addEventListener('click', () => {
-            clearInterval(timer);
-        });
-
-        // ESC 키로 이동
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                clearInterval(timer);
-                window.location.href = redirectUrl;
-            }
-        });
     </script>
 </body>
 </html>

@@ -1,148 +1,47 @@
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .button-group {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #dee2e6;
-        }
-
-        .stats-badge {
-            background-color: #ecf0f1;
-            color: #2c3e50;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .empty-content {
-            color: #7f8c8d;
-            font-style: italic;
-            text-align: center;
-            padding: 50px;
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <div class="container">
-        <!-- 헤더 영역 -->
-        <div class="header">
-            <div class="title" th:text="${board.title}">게시물 제목</div>
-        </div>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게시글 상세보기 - 감자 게시판</title>
+    <style>
+        body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        <!-- 메타 정보 -->
-        <div class="meta-info">
-            <div class="meta-left">
-                <div class="meta-item">
-                    <span>👤</span>
-                    <span class="author" th:text="${board.author}">작성자</span>
-                </div>
-                <div class="meta-item">
-                    <span>📅</span>
-                    <span class="date" th:text="${#temporals.format(board.createdAt, 'yyyy년 MM월 dd일 HH:mm')}">작성일</span>
-                </div>
-                <div class="meta-item" th:if="${board.updatedAt != null and board.updatedAt != board.createdAt}">
-                    <span>🔄</span>
-                    <span class="date">
-                        수정: <span th:text="${#temporals.format(board.updatedAt, 'yyyy-MM-dd HH:mm')}">수정일</span>
-                    </span>
-                </div>
-            </div>
-            <div class="meta-right">
-                <div class="meta-item">
-                    <span>👁️</span>
-                    <span class="view-count" th:text="${board.viewCount}">0</span>
-                    <span class="stats-badge">조회</span>
-                </div>
-                <div class="meta-item">
-                    <span>🆔</span>
-                    <span class="stats-badge" th:text="'No.' + ${board.id}">No.1</span>
-                </div>
-            </div>
-        </div>
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
 
-        <!-- 첨부파일 영역 -->
-        <div class="file-section" th:if="${board.hasFile()}">
-            <div class="meta-item">
-                <span>📎</span>
-                <strong>첨부파일:</strong>
-                <a th:href="@{/board/download/{id}(id=${board.id})}" class="file-download" th:text="${board.filename}">파일명</a>
-            </div>
-        </div>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
 
-        <!-- 게시물 내용 -->
-        <div class="content">
-            <div th:if="${board.content != null and !board.content.isEmpty()}" th:text="${board.content}">
-                게시물 내용이 여기에 표시됩니다.
-            </div>
-            <div th:unless="${board.content != null and !board.content.isEmpty()}" class="empty-content">
-                내용이 없습니다.
-            </div>
-        </div>
+        .header {
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
 
-        <!-- 버튼 그룹 -->
-        <div class="button-group">
-            <a th:href="@{/board/modify/{id}(id=${board.id})}" class="btn btn-warning">✏️ 수정</a>
-            <a th:href="@{/board/delete(id=${board.id})}" class="btn btn-danger"
-               onclick="return confirm('정말 삭제하시겠습니까?\n삭제된 게시물은 복구할 수 없습니다.')">🗑️ 삭제</a>
-            <a href="/board/list" class="btn btn-secondary">📋 목록</a>
-            <a href="/board/write" class="btn btn-primary">✏️ 새 글쓰기</a>
-        </div>
-
-        <!-- 추가 정보 -->
-        <div style="text-align: center; margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; color: #7f8c8d; font-size: 14px;">
-            <div th:if="${board.hasFile()}">
-                📁 파일 다운로드를 원하시면 위의 파일명을 클릭하세요
-            </div>
-            <div style="margin-top: 10px;">
-                💡 게시물에 문제가 있다면 관리자에게 문의해주세요
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // 페이지 로드 시 조회수 증가 알림 (선택사항)
-        document.addEventListener('DOMContentLoaded', function() {
-            // 뒤로가기 버튼 기능
-            if (document.referrer.includes('/board/list')) {
-                // 목록에서 온 경우 뒤로가기 버튼 스타일 변경
-                const listBtn = document.querySelector('a[href="/board/list"]');
-                if (listBtn) {
-                    listBtn.innerHTML = '⬅️ 목록으로 돌아가기';
-                }
-            }
-        });
-
-        // 삭제 확인 강화
-        document.querySelector('.btn-danger').addEventListener('click', function(e) {
-            if (!confirm('정말 삭제하시겠습니까?\n\n⚠️ 주의: 삭제된 게시물은 복구할 수 없습니다!')) {
-                e.preventDefault();
-            }
-        });
-    </script>
         .title {
             font-size: 28px;
-            font-weight: bold;
             color: #2c3e50;
             margin-bottom: 15px;
-            line-height: 1.3;
+            font-weight: bold;
         }
 
         .meta-info {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .meta-left, .meta-right {
-            display: flex;
-            gap: 20px;
+            flex-wrap: wrap;
+            color: #7f8c8d;
+            font-size: 14px;
+            gap: 15px;
         }
 
         .meta-item {
@@ -151,63 +50,50 @@
             gap: 5px;
         }
 
-        .author {
-            color: #27ae60;
-            font-weight: bold;
-        }
-
-        .view-count {
-            color: #e74c3c;
-            font-weight: bold;
-        }
-
-        .date {
-            color: #7f8c8d;
-        }
-
         .content {
-            background-color: #fdfdfd;
-            border: 1px solid #e9ecef;
+            background-color: #f8f9fa;
+            padding: 25px;
             border-radius: 8px;
-            padding: 30px;
             margin: 20px 0;
-            min-height: 300px;
-            font-size: 16px;
-            line-height: 1.8;
+            min-height: 200px;
             white-space: pre-wrap;
-            word-wrap: break-word;
+            line-height: 1.8;
+            font-size: 16px;
         }
 
         .file-section {
-            background-color: #e8f4fd;
-            border: 1px solid #bee5eb;
-            border-radius: 8px;
+            background-color: #ecf0f1;
             padding: 15px;
+            border-radius: 8px;
             margin: 20px 0;
         }
 
-        .file-download {
-            color: #0066cc;
+        .file-link {
+            color: #3498db;
             text-decoration: none;
             font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
         }
 
-        .file-download:hover {
+        .file-link:hover {
             text-decoration: underline;
+        }
+
+        .actions {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
         }
 
         .btn {
             padding: 12px 24px;
-            margin: 10px 5px;
+            margin: 5px;
             border: none;
             border-radius: 8px;
             text-decoration: none;
             cursor: pointer;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             transition: all 0.3s ease;
             display: inline-block;
         }
@@ -234,35 +120,109 @@
 
         .btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .message {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .meta-info {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .actions {
+                text-align: center;
+            }
+
+            .btn {
+                display: block;
+                margin: 8px auto;
+                width: 200px;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <!-- 메시지 표시 -->
+        <div th:if="${message}" class="message success" th:text="${message}"></div>
+        <div th:if="${error}" class="message error" th:text="${error}"></div>
 
-<div class="container">
-    <!-- 게시글 제목 -->
-    <h1 th:text="${board.title}">제목입니다.</h1>
+        <!-- 게시글 헤더 -->
+        <div class="header">
+            <h1 class="title" th:text="${board.title}">게시글 제목</h1>
+            <div class="meta-info">
+                <div class="meta-item">
+                    <span>👤</span>
+                    <span th:text="${board.author}">작성자</span>
+                </div>
+                <div class="meta-item">
+                    <span>📅</span>
+                    <span th:text="${#temporals.format(board.createdAt, 'yyyy-MM-dd HH:mm')}">2023-01-01 10:00</span>
+                </div>
+                <div class="meta-item">
+                    <span>👁️</span>
+                    <span>조회수 <strong th:text="${board.viewCount}">0</strong></span>
+                </div>
+                <div class="meta-item" th:if="${board.updatedAt != null and board.updatedAt != board.createdAt}">
+                    <span>✏️</span>
+                    <span>수정일: <span th:text="${#temporals.format(board.updatedAt, 'yyyy-MM-dd HH:mm')}">2023-01-01 10:30</span></span>
+                </div>
+            </div>
+        </div>
 
-    <!-- 게시글 내용 -->
-    <p th:text="${board.content}">내용이 들어갈 부분입니다.</p>
+        <!-- 게시글 내용 -->
+        <div class="content" th:text="${board.content}">
+            게시글 내용이 여기에 표시됩니다.
+            여러 줄의 내용도 정상적으로 표시됩니다.
+        </div>
 
-    <!-- 현재 파일 정보 표시 -->
-    <div class="file-info" th:if="${board.filename}">
-        <strong>현재 파일:</strong> <span th:text="${board.filename}">파일 이름</span>
+        <!-- 첨부파일 -->
+        <div class="file-section" th:if="${board.filename != null}">
+            <h3>📎 첨부파일</h3>
+            <a th:href="@{/board/download(id=${board.id})}" class="file-link" th:text="${board.filename}">파일명.pdf</a>
+        </div>
+
+        <!-- 액션 버튼 -->
+        <div class="actions">
+            <a th:href="@{/board/modify/{id}(id=${board.id})}" class="btn btn-warning">✏️ 수정</a>
+            <a th:href="@{/board/delete(id=${board.id})}" class="btn btn-danger"
+               onclick="return confirm('정말로 이 게시글을 삭제하시겠습니까?')">🗑️ 삭제</a>
+            <a href="/board/write" class="btn btn-primary">✏️ 새 글 작성</a>
+            <a href="/board/list" class="btn btn-secondary">📋 목록으로</a>
+        </div>
     </div>
 
-    <!-- 링크 버튼들 -->
-    <div class="links">
-        <!-- 글 삭제 링크 -->
-        <a th:href="@{/board/delete(id=${board.id})}">글삭제</a>
-
-        <!-- 파일 다운로드 링크 -->
-        <a th:href="@{/board/download/{id}(id=${board.id})}" th:if="${board.filepath}">다운받기</a>
-
-        <!-- 게시글 수정 링크 -->
-        <a th:href="@{/board/modify/{id}(id=${board.id})}">수정</a>
-    </div>
-</div>
-
+    <script>
+        // 페이지 로드 시 조회수 증가 애니메이션
+        document.addEventListener('DOMContentLoaded', function() {
+            const viewCountElement = document.querySelector('.meta-item:nth-child(3) strong');
+            if (viewCountElement) {
+                viewCountElement.style.color = '#e74c3c';
+                setTimeout(() => {
+                    viewCountElement.style.color = '#2c3e50';
+                    viewCountElement.style.transition = 'color 0.5s ease';
+                }, 100);
+            }
+        });
+    </script>
 </body>
 </html>
