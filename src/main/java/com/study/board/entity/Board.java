@@ -1,12 +1,15 @@
-
 package com.study.board.entity;
 
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Column;
+import java.time.LocalDateTime;
 
 /**
  * 게시판 엔티티 클래스.
@@ -29,11 +32,13 @@ public class Board {
     /**
      * 게시물의 제목.
      */
+    @Column(nullable = false, length = 200)
     private String title;
 
     /**
      * 게시물의 내용.
      */
+    @Column(nullable = false, length = 4000)
     private String content;
 
     /**
@@ -45,4 +50,18 @@ public class Board {
      * 첨부된 파일의 경로.
      */
     private String filepath;
+
+    /**
+     * 게시물 생성 일시.
+     */
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    /**
+     * 게시물 수정 일시.
+     */
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

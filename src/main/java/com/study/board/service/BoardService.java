@@ -1,28 +1,39 @@
 package com.study.board.service;
 
-import com.study.board.dto.BoardDTO; // BoardDTO를 가져옴
-import com.study.board.entity.Board; // Board 엔티티를 가져옴
-import com.study.board.repository.BoardRepository; // 게시물 관련 데이터베이스 작업을 위한 레포지토리
-import org.springframework.beans.factory.annotation.Autowired; // 의존성 주입을 위해 사용
-import org.springframework.data.domain.Page; // 페이지네이션을 위한 클래스
-import org.springframework.data.domain.Pageable; // 페이지 요청을 위한 클래스
-import org.springframework.stereotype.Service; // 이 클래스가 서비스임을 나타냄
-import org.springframework.web.multipart.MultipartFile; // 파일 업로드를 위한 클래스
+import com.study.board.dto.BoardDTO;
+import com.study.board.entity.Board;
+import com.study.board.repository.BoardRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File; // 파일 관련 클래스
-import java.io.IOException; // 입출력 관련 예외
-import java.util.UUID; // 고유한 ID 생성을 위한 클래스
+import javax.persistence.EntityNotFoundException;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
-@Service // 이 클래스가 서비스임을 나타냄
+@Service
 public class BoardService {
 
     @Autowired
-    private BoardRepository boardRepository; // 게시물 관련 데이터베이스 작업을 위한 레포지토리
+    private BoardRepository boardRepository;
 
     // 파일 저장 경로 설정
     private static final String FILE_DIRECTORY = System.getProperty("user.dir") + File.separator +
             "src" + File.separator + "main" + File.separator + "resources" + File.separator +
             "static" + File.separator + "files";
+
+    // 허용되는 파일 확장자 목록
+    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(
+            ".jpg", ".jpeg", ".png", ".gif", ".pdf", ".doc", ".docx", ".txt", ".zip", ".rar"
+    );
+
+    // 최대 파일 크기 (10MB)
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     /**
      * 게시물 조회를 위한 메서드
@@ -31,11 +42,9 @@ public class BoardService {
      * @return 게시물 DTO
      */
     public BoardDTO boardView(Integer id) {
-        // 게시물 ID로 게시물 조회
         Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid board ID")); // 게시물이 없으면 예외 발생
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
 
-        // Board 엔티티를 BoardDTO로 변환하여 반환
         return convertToDTO(board);
     }
 
@@ -47,17 +56,19 @@ public class BoardService {
      * @throws Exception 파일 저장 중 오류 발생 시
      */
     public void write(BoardDTO boardDTO, MultipartFile file) throws Exception {
-        Board board = new Board(); // 새로운 Board 엔티티 생성
-        board.setTitle(boardDTO.getTitle());
-        board.setContent(boardDTO.getContent());
+        validateBoardData(boardDTO);
+
+        Board board = new Board();
+        board.setTitle(boardDTO.getTitle().trim());
+        board.setContent(boardDTO.getContent().trim());
 
         if (file != null && !file.isEmpty()) {
-            String fileName = saveFile(file); // 파일 저장 메서드 호출
-            board.setFilename(fileName); // 파일 이름 설정
-            board.setFilepath("/files/" + fileName); // 파일 경로 설정
+            validateFile(file);
+            String fileName = saveFile(file);
+            board.setFilename(fileName);
+            board.setFilepath("/files/" + fileName);
         }
 
-        // 게시물 데이터베이스에 저장
         boardRepository.save(board);
     }
 
@@ -70,20 +81,22 @@ public class BoardService {
      * @throws Exception 파일 저장 중 오류 발생 시
      */
     public void updateBoard(Integer id, BoardDTO boardDTO, MultipartFile file) throws Exception {
-        // 게시물 ID로 기존 게시물 조회
-        Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid board ID")); // 게시물이 없으면 예외 발생
+        validateBoardData(boardDTO);
 
-        board.setTitle(boardDTO.getTitle());
-        board.setContent(boardDTO.getContent());
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
+
+        board.setTitle(boardDTO.getTitle().trim());
+        board.setContent(boardDTO.getContent().trim());
 
         if (file != null && !file.isEmpty()) {
-            String fileName = saveFile(file); // 파일 저장 메서드 호출
-            board.setFilename(fileName); // 새 파일 이름 설정
-            board.setFilepath("/files/" + fileName); // 새 파일 경로 설정
+            validateFile(file);
+            // 기존 파일 삭제 로직 추가 가능
+            String fileName = saveFile(file);
+            board.setFilename(fileName);
+            board.setFilepath("/files/" + fileName);
         }
 
-        // 수정된 게시물 데이터베이스에 저장
         boardRepository.save(board);
     }
 
@@ -94,7 +107,6 @@ public class BoardService {
      * @return 페이징 처리된 게시글 목록
      */
     public Page<BoardDTO> boardList(Pageable pageable) {
-        // 모든 게시물 목록을 페이징 처리하여 반환
         return boardRepository.findAll(pageable).map(this::convertToDTO);
     }
 
@@ -106,8 +118,10 @@ public class BoardService {
      * @return 검색어가 포함된 게시글 목록
      */
     public Page<BoardDTO> boardSearchList(String searchKeyword, Pageable pageable) {
-        // 제목에 검색어가 포함된 게시물 목록을 페이징 처리하여 반환
-        return boardRepository.findByTitleContaining(searchKeyword, pageable).map(this::convertToDTO);
+        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+            return boardList(pageable);
+        }
+        return boardRepository.findByTitleContaining(searchKeyword.trim(), pageable).map(this::convertToDTO);
     }
 
     /**
@@ -116,7 +130,14 @@ public class BoardService {
      * @param id 게시글 ID
      */
     public void boardDelete(Integer id) {
-        // 게시물 ID로 게시물 삭제
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다. ID: " + id));
+
+        // 첨부 파일이 있는 경우 파일도 삭제
+        if (board.getFilename() != null && !board.getFilename().isEmpty()) {
+            deleteFile(board.getFilename());
+        }
+
         boardRepository.deleteById(id);
     }
 
@@ -133,7 +154,50 @@ public class BoardService {
         dto.setContent(board.getContent());
         dto.setFilename(board.getFilename());
         dto.setFilepath(board.getFilepath());
+        dto.setCreatedAt(board.getCreatedAt());
+        dto.setUpdatedAt(board.getUpdatedAt());
         return dto;
+    }
+
+    /**
+     * 게시물 데이터 유효성 검증
+     *
+     * @param boardDTO 검증할 게시물 DTO
+     */
+    private void validateBoardData(BoardDTO boardDTO) {
+        if (boardDTO.getTitle() == null || boardDTO.getTitle().trim().isEmpty()) {
+            throw new IllegalArgumentException("제목은 필수 입력 항목입니다.");
+        }
+        if (boardDTO.getContent() == null || boardDTO.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("내용은 필수 입력 항목입니다.");
+        }
+        if (boardDTO.getTitle().length() > 200) {
+            throw new IllegalArgumentException("제목은 200자 이하로 입력해주세요.");
+        }
+        if (boardDTO.getContent().length() > 4000) {
+            throw new IllegalArgumentException("내용은 4000자 이하로 입력해주세요.");
+        }
+    }
+
+    /**
+     * 파일 유효성 검증
+     *
+     * @param file 검증할 파일
+     */
+    private void validateFile(MultipartFile file) {
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("파일 크기는 10MB 이하여야 합니다.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            throw new IllegalArgumentException("파일명이 올바르지 않습니다.");
+        }
+
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. 허용 형식: " + ALLOWED_EXTENSIONS);
+        }
     }
 
     /**
@@ -144,12 +208,35 @@ public class BoardService {
      * @throws IOException 파일 저장 중 오류 발생 시
      */
     private String saveFile(MultipartFile file) throws IOException {
+        // 파일 저장 디렉토리 생성
+        File directory = new File(FILE_DIRECTORY);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
         // UUID를 이용해 고유한 파일 이름 생성
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename(); // 파일 이름에 UUID 추가
-        File saveFile = new File(FILE_DIRECTORY, fileName); // 파일 저장 경로 설정
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        File saveFile = new File(FILE_DIRECTORY, fileName);
 
         // 파일을 지정한 경로에 저장
         file.transferTo(saveFile);
-        return fileName; // 저장된 파일의 이름 반환
+        return fileName;
+    }
+
+    /**
+     * 파일을 삭제하는 메서드
+     *
+     * @param filename 삭제할 파일명
+     */
+    private void deleteFile(String filename) {
+        try {
+            File file = new File(FILE_DIRECTORY, filename);
+            if (file.exists()) {
+                file.delete();
+            }
+        } catch (Exception e) {
+            // 파일 삭제 실패는 로그만 남기고 진행
+            System.err.println("파일 삭제 실패: " + filename + ", 오류: " + e.getMessage());
+        }
     }
 }
